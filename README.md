@@ -1,5 +1,5 @@
 # Cordra Neo4j Extension
-The original extension from CNRI registers each Cordra object as one node in Neo4j and establishes one-to-one relationship between the nodes if there any links between the corresponding Cordra objects.
+The [original extension](https://www.cordra.org/documentation/extensions/neo4j-as-an-additional-index.html) from CNRI registers each Cordra object as one node in Neo4j and establishes one-to-one relationship between the nodes if there any links between the corresponding Cordra objects.
 
 However, sometimes you want to express **simultaneous** relationship with multiple Cordra objects. In JSON, you express this typically using a JSON property, whose value is a JSON object and multiple 
 outgoing links flow out from this JSON object. It would be appropriate to register this inner JSON object as its own node in Neo4j and establish relationships from this node to the other nodes
