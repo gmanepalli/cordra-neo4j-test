@@ -21,7 +21,7 @@ This extension improves the original extension by handling the above scenarios. 
     * If the property value is a JSON object, node labels and relationship types can be expressed as a JSON config on this property.
     * If the property value is a JSON array of JSON objects, the relationship type can be expressed on the property whose type is "array" and the node label can be expressed on the item property whose type is "object".
 
-3. propertyNameMode configuration of the extension is now moot.
+3. propertyNameMode configuration of the original extension is now moot.
 
 ## Configuration
 
@@ -29,7 +29,7 @@ You can set the node label on the JSON schema registered with Cordra like so:
 
 ```json
 {
-    "Cordra": {
+    "cordra": {
         "ext": {
             "neo4j": {
                 "nodeLabel": "NewNodeLabel"
@@ -43,7 +43,7 @@ You can set the relationship type on the JSON schema like so:
 
 ```json
 {
-    "Cordra": {
+    "cordra": {
         "ext": {
             "neo4j": {
                 "relationshipType": "NEW_RELATIONSHIP_TYPE"
