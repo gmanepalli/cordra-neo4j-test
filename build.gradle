@@ -1,0 +1,66 @@
+plugins {
+    id 'java-library'
+}
+
+defaultTasks 'clean', 'jar'
+
+group = 'net.cnri.cordra'
+archivesBaseName = 'cordra-neo4j-test'
+version = '2.0.0'
+
+description = 'Cordra example hooks for Neo4j as an additional index.'
+ext.pomUrl = 'https://gitlab.com/cnri/cordra/cordra-neo4j-test'
+ext.pomLicenseName = 'Cordra (Version 2.5.0) License Agreement'
+ext.pomLicenseUrl = 'https://hdl.handle.net/20.1000/133'
+ext.pomDeveloperEmail = 'support@cordra.org'
+
+allprojects {
+    apply from: "$rootProject.projectDir/cnri.gradle"
+    plugins.withId('java') {
+        sourceCompatibility = 11
+        targetCompatibility = 11
+        compileJava {
+            def index = options.compilerArgs.indexOf('8')
+            if (index != -1) {
+                options.compilerArgs.set(index, '11')
+            }
+        }
+    }
+}
+
+configurations {
+    toDistribute
+    api.extendsFrom toDistribute
+}
+
+dependencies {
+    api 'net.cnri.cordra:cordra-core:2.5.0'
+
+    toDistribute 'org.neo4j.driver:neo4j-java-driver:4.4.5'
+    toDistribute 'org.neo4j:neo4j-cypher-dsl:2022.4.0'
+
+    implementation 'net.cnri.cordra:cordra-client:2.5.0'
+    implementation 'net.cnri.cordra:cordra-hooks-support:2.5.0'
+
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'org.slf4j:slf4j-simple:1.7.36'
+
+    implementation 'net.sf.jopt-simple:jopt-simple:5.0.4'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+//        events "passed", "failed", "skipped"
+        events "failed", "skipped"
+    }
+}
+
+jar {
+    from { (configurations.toDistribute).collect { it.isDirectory() ? it : zipTree(it) } } {
+        exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    }
+}

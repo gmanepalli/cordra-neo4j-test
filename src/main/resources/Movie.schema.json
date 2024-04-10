@@ -1,0 +1,39 @@
+{
+    "type": "object",
+    "required": [
+        "title",
+        "released"
+    ],
+    "properties": {
+        "title": {
+            "type": "string",
+            "cordra": {
+                "preview": {
+                    "showInPreview": true,
+                    "isPrimary": true
+                }
+            }
+        },
+        "tagline": {
+            "type": "string",
+            "cordra": {
+                "preview": {
+                    "showInPreview": true,
+                    "excludeTitle": true
+                }
+            }
+        },
+        "released": {
+            "type": "number",
+            "cordra": {
+                "preview": {
+                    "showInPreview": true,
+                    "excludeTitle": true
+                }
+            }
+        },
+        "votes": {
+            "type": "number"
+        }
+    }
+}

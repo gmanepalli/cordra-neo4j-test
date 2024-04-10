@@ -1,0 +1,286 @@
+apply plugin: 'base'
+apply plugin: 'maven-publish'
+
+plugins.withId('java') {
+    if (project.hasProperty('refreshSnapshots')) {
+        configurations.all { resolutionStrategy { cacheChangingModulesFor 0, 'seconds' } }
+    }
+
+    if (project.hasProperty('seeJavaWarnings')) {
+        compileJava { options.compilerArgs += ['-Xlint:unchecked', '-Xlint:deprecation'] }
+    }
+
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+    if (JavaVersion.current().isJava9Compatible()) {
+        compileJava {
+            options.compilerArgs.addAll(['--release', '8'])
+        }
+    }
+
+    defaultTasks 'clean', 'jar'
+    compileJava.mustRunAfter clean
+    jar.dependsOn clean
+    publish.dependsOn assemble
+
+    tasks.withType(AbstractArchiveTask) {
+        duplicatesStrategy DuplicatesStrategy.EXCLUDE
+    }
+    tasks.withType(AbstractCopyTask) {
+        duplicatesStrategy DuplicatesStrategy.EXCLUDE
+    }
+
+    java {
+        withJavadocJar()
+        withSourcesJar()
+    }
+
+    javadoc {
+        // turn off Javadoc linting
+        options.addStringOption('Xdoclint:none', '-quiet')
+
+        if(JavaVersion.current().isJava9Compatible()) {
+            options.addBooleanOption('html5', true)
+        }
+    }
+
+    plugins.withId('war') {
+        defaultTasks 'clean', 'war'
+        war.dependsOn clean
+
+        jar {
+            classifier 'classes'
+        }
+        artifacts {
+            archives jar
+        }
+    }
+
+    publishing {
+        publications {
+            cnriGradleJava(MavenPublication) {
+                from components.java
+                afterEvaluate {
+                    pom(project.ext.configurePom)
+                }
+            }
+        }
+    }
+}
+
+def repoBaseUri = project.ext.properties.repoBaseUri
+def mavenUser = project.ext.properties.mavenUser
+def mavenPassword = project.ext.properties.mavenPassword
+
+repositories {
+    if (project.hasProperty('mavenCentralStaging')) {
+        project.ext.properties.mavenCentralStaging.split(',').eachWithIndex { stagingUrl, idx ->
+            maven {
+                name = "mavenCentralStaging${idx}"
+                url = stagingUrl
+                credentials {
+                    username = ossrhUsername
+                    password = ossrhPassword
+                }
+            }
+        }
+    } else if (repoBaseUri) {
+        maven {
+            url = repoBaseUri
+            credentials {
+                username = mavenUser
+                password = mavenPassword
+            }
+            authentication {
+                basic(BasicAuthentication)
+            }
+        }
+    } else {
+        maven {
+            url = "file://${rootProject.projectDir}/cnri-libs"
+        }
+        flatDir {
+            dirs 'lib', '.', 'WEB-INF/lib'
+        }
+    }
+    mavenCentral()
+    maven {
+        name = 'oracle'
+        url = "https://download.oracle.com/maven"
+    }
+}
+
+configurations.all {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'commons-logging' && details.requested.name == 'commons-logging') {
+            details.useTarget group: 'org.slf4j', name: 'jcl-over-slf4j', version: '1.7.36'
+        } else if (details.requested.group == 'commons-logging' && details.requested.name == 'commons-logging-api') {
+            details.useTarget group: 'org.slf4j', name: 'jcl-over-slf4j', version: '1.7.36'
+        } else if (details.requested.group == 'log4j' && details.requested.name == 'log4j') {
+            details.useTarget group: 'org.slf4j', name: 'log4j-over-slf4j', version: '1.7.36'
+        } else if (details.requested.group == 'org.slf4j' && details.requested.name == 'slf4j-log4j12') {
+            details.useTarget group: 'org.slf4j', name: 'log4j-over-slf4j', version: '1.7.36'
+        }
+    }
+}
+
+project.ext.skipPublishingCnriGradleJava = { ->
+    tasks.withType(PublishToMavenRepository) {
+        onlyIf {
+            publication != publishing.publications.cnriGradleJava
+        }
+    }
+}
+
+project.ext.populateConfigurationWithMavenArtifacts = { name, test ->
+    configurations.each { config ->
+        if (config.name == name) return
+        if (!config.canBeResolved) return
+        if (config.name != 'testCompileOnly' && config.name != 'testRuntimeOnly' &&
+                config.dependencies.findAll(test).isEmpty()) return
+        config.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+            def dep = artifact.moduleVersion.id
+            if (test(dep)) {
+                project.dependencies.add(name, [group: dep.group, name: dep.name, version: dep.version, classifier: artifact.classifier, ext: artifact.extension], { transitive = false })
+                project.dependencies.add(name, [group: dep.group, name: dep.name, version: dep.version, ext: 'pom'], { transitive = false })
+                if (artifact.extension == 'jar' || artifact.extension == 'war') {
+                    project.dependencies.add(name, [group: dep.group, name: dep.name, version: dep.version, classifier: 'sources'], { transitive = false })
+                }
+            }
+        }
+    }
+}
+
+project.ext.configurationToMavenRepository = { name, path ->
+    copySpec {
+        configurations[name].resolvedConfiguration.resolvedArtifacts.collect { artifact ->
+            def dep = artifact.moduleVersion.id
+            from(artifact.file) {
+                into(path + "/" + dep.group.replace(".", "/") + "/" + dep.name + "/" + dep.version)
+            }
+        }
+    }
+}
+
+project.ext.configurePom = { MavenPom pom ->
+    // packaging needs to be set late
+    if (project.ext.properties.pomPackaging) {
+        pom.whenConfigured { packaging = project.ext.pomPackaging }
+    }
+    if (!pom.name.present) {
+        def pomName = project.ext.properties.pomName
+        if (!pomName) pomName = (project.group + ':' + project.archivesBaseName)
+        pom.name = pomName
+    }
+    if (!pom.description.present) {
+        def pomDescription = project.ext.properties.pomDescription
+        if (!pomDescription) pomDescription = project.description
+        if (pomDescription) {
+            pom.description = pomDescription
+        }
+    }
+    if (!pom.url.present && project.ext.properties.pomUrl) {
+        pom.url = project.ext.properties.pomUrl
+    }
+    if (!pom.scm) {
+        def pomScmUrl = project.ext.properties.pomScmUrl
+        if (!pomScmUrl) pomScmUrl = project.ext.properties.pomUrl
+        if (pomScmUrl) {
+            pom.scm {
+                it.url = pomScmUrl
+            }
+        }
+    }
+    if (!pom.licenses && (project.ext.properties.pomLicenseName || project.ext.properties.pomLicenseUrl)) {
+        pom.licenses {
+            license {
+                if (project.ext.properties.pomLicenseName) {
+                    it.name = project.ext.properties.pomLicenseName
+                }
+                if (project.ext.properties.pomLicenseUrl) {
+                    it.url = project.ext.properties.pomLicenseUrl
+                }
+            }
+        }
+    }
+    if (!pom.developers && project.ext.properties.pomDeveloperEmail) {
+        pom.developers {
+            developer {
+                it.name = 'CNRI'
+                it.email = project.ext.properties.pomDeveloperEmail
+                it.organization = 'CNRI' // = required here
+                it.organizationUrl = 'https://www.cnri.reston.va.us'
+            }
+        }
+    }
+}
+
+if (!project.hasProperty('mavenCentral')) {
+    publishing {
+        repositories {
+            // Uncomment this and comment out 'cnriInternal' to publish to the local folder 'build/repo'
+            // Useful for testing pom and artifact generation is working as expected.
+//            maven {
+//                name = 'buildRepo'
+//                url = layout.buildDirectory.dir("repo")
+//            }
+            maven {
+                name = 'cnriInternal'
+                url = repoBaseUri
+                credentials {
+                    username = mavenUser
+                    password = mavenPassword
+                }
+                authentication {
+                    basic(BasicAuthentication)
+                }
+            }
+        }
+    }
+} else {
+    apply plugin: 'signing'
+
+    signing {
+        sign publishing.publications
+    }
+
+    project.tasks.withType(Sign) {
+        signatures.all {
+            if (it.file.name.endsWith('.tar.gz.asc')) {
+                // Workaround for apparent Gradle bug around signing files where extension has a dot
+                it.type = 'tar.gz.asc'
+            }
+        }
+    }
+
+    publishing {
+        repositories {
+            maven {
+                name = 'mavenCentral'
+                def releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+                def snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
+                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+                credentials {
+                    username = ossrhUsername
+                    password = ossrhPassword
+                }
+            }
+        }
+    }
+}
+
+tasks.withType(PublishToMavenRepository).configureEach {
+    dependsOn tasks.withType(GenerateMavenPom)
+}
+
+tasks.withType(PublishToMavenLocal).configureEach {
+    dependsOn tasks.withType(GenerateMavenPom)
+}
+
+tasks.withType(GenerateMavenPom).configureEach {
+    mustRunAfter clean
+}
+
+if (file("$rootProject.projectDir/user.gradle").exists()) {
+    apply from: "$rootProject.projectDir/user.gradle"
+}

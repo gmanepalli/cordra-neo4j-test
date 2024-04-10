@@ -1,0 +1,9 @@
+{
+    "user": "neo4j",
+    "password": "password",
+    "uri": "bolt://localhost:7687",
+    "databaseName": "neo4j",
+    "propertyNameMode": "topLevel",
+    "excludeTypes": ["User", "Group", "CordraDesign", "Schema"],
+    "includeTypes": ["Person", "Movie"]
+}

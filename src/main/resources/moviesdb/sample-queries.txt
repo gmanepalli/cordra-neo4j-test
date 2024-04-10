@@ -1,0 +1,69 @@
+// Note: this is optimized for looking at compelling graphs in Neo4j Browser.
+// If your goal is actually to search objects you would do things differently.
+// For example, when finding Tom Hanks's co-actors, you would just list the co-actors, not the movies and Tom Hanks himself.
+
+// Sources:
+// https://neo4j.com/developer/cypher/guide-cypher-basics/
+// https://github.com/neo4j-graph-examples/movies/blob/main/documentation/movies.neo4j-browser-guide
+
+// Show all Cordra Objects
+
+MATCH (n:CordraObject) RETURN n;
+
+// List all Tom Hanks movies
+
+MATCH (tom:Person {name: "Tom Hanks"})-[:ACTED_IN]->(tomHanksMovies)
+RETURN tom, tomHanksMovies
+
+
+// Who directed Cloud Atlas?
+
+MATCH (cloudAtlas:Movie {title: "Cloud Atlas"})<-[:DIRECTED]-(directors)
+RETURN cloudAtlas, directors
+
+
+// Tom Hanks's co-actors
+
+MATCH (tom:Person {name:"Tom Hanks"})-[:ACTED_IN]->(m)<-[:ACTED_IN]-(coActors)
+RETURN tom, m, coActors
+
+
+// directors of movies in which Tom Hanks acted
+
+MATCH (actor:Person)-[:ACTED_IN]-(film:Movie), (director:Person)-[:DIRECTED]-(film:Movie)
+WHERE actor.name='Tom Hanks' RETURN actor, film, director
+
+
+// People related to "Cloud Atlas"…
+
+MATCH (people:Person)-[relatedTo]-(cloudAtlas:Movie {title: "Cloud Atlas"})
+RETURN people, cloudAtlas
+
+
+// Movies and actors up to 3 hops away from Kevin Bacon
+
+MATCH (bacon:Person {name:"Kevin Bacon"})-[*1..3]-(hollywood)
+RETURN DISTINCT bacon, hollywood
+
+
+// Find the Bacon Path to Meg Ryan
+
+MATCH p=shortestPath(
+  (bacon:Person {name:"Kevin Bacon"})-[*]-(meg:Person {name:"Meg Ryan"})
+)
+RETURN p
+
+
+// Extend Tom Hanks co-actors, find co-co-actors who haven't worked with Tom Hanks...
+
+MATCH (tom:Person {name:"Tom Hanks"})-[:ACTED_IN]->(m)<-[:ACTED_IN]-(coActors),
+      (coActors)-[:ACTED_IN]->(m2)<-[:ACTED_IN]-(cocoActors)
+WHERE NOT (tom)-[:ACTED_IN]->()<-[:ACTED_IN]-(cocoActors) AND tom <> cocoActors
+RETURN tom, coActors, m, m2, cocoActors
+
+
+// Find someone to introduce Tom Hanks to Tom Cruise
+
+MATCH (tom:Person {name:"Tom Hanks"})-[:ACTED_IN]->(m)<-[:ACTED_IN]-(coActors),
+      (coActors)-[:ACTED_IN]->(m2)<-[:ACTED_IN]-(cruise:Person {name:"Tom Cruise"})
+RETURN tom, m, coActors, m2, cruise

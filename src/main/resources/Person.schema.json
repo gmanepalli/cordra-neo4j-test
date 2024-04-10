@@ -1,0 +1,116 @@
+{
+    "type": "object",
+    "required": [
+        "name"
+    ],
+    "properties": {
+        "name": {
+            "type": "string",
+            "cordra": {
+                "preview": {
+                    "showInPreview": true,
+                    "isPrimary": true
+                }
+            }
+        },
+        "born": {
+            "type": "number"
+        },
+        "ACTED_IN": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+                "type": "string",
+                "cordra": {
+                    "type": {
+                        "handleReference": {
+                            "types": [
+                                "Movie"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "DIRECTED": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+                "type": "string",
+                "cordra": {
+                    "type": {
+                        "handleReference": {
+                            "types": [
+                                "Movie"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "PRODUCED": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+                "type": "string",
+                "cordra": {
+                    "type": {
+                        "handleReference": {
+                            "types": [
+                                "Movie"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "WROTE": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+                "type": "string",
+                "cordra": {
+                    "type": {
+                        "handleReference": {
+                            "types": [
+                                "Movie"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "REVIEWED": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+                "type": "string",
+                "cordra": {
+                    "type": {
+                        "handleReference": {
+                            "types": [
+                                "Movie"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "FOLLOWS": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+                "type": "string",
+                "cordra": {
+                    "type": {
+                        "handleReference": {
+                            "types": [
+                                "Person"
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
